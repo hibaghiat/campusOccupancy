@@ -52,7 +52,6 @@ var apiV2 = axios_1.default.create({
         rejectUnauthorized: false,
     }),
 });
-console.log(" Username ".concat(process.env.ARUBA_USERNAME));
 function loginV2() {
     return __awaiter(this, void 0, void 0, function () {
         var loginResponse, sessionCookie, csrfToken, error_1;
