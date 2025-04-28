@@ -51,6 +51,15 @@ var cron = require("node-cron");
 var arubaService_1 = require("./arubaService");
 var apMappings_1 = require("./apMappings");
 var MongoClient = require("mongodb").MongoClient;
+var express = require("express");
+var app = express();
+var PORT = process.env.PORT;
+app.get("/", function (req, res) {
+    res.send("Campus Occupancy Backend is running");
+});
+app.listen(PORT, function () {
+    console.log("Server is listening on port ".concat(PORT));
+});
 // Mock function to get device status
 function getDeviceStatus(classroom) {
     var simulatedOnRooms = ["RoomA", "RoomB"];
@@ -192,7 +201,7 @@ function handleDevicesOff(classroom, occupancy) {
     return { status: "On", count: count, frequency: frequency };
 }
 // Schedule to run every hour from 8AM to 10PM
-cron.schedule("0 8-22 * * *", function () { return __awaiter(void 0, void 0, void 0, function () {
+cron.schedule("13 1-22 * * *", function () { return __awaiter(void 0, void 0, void 0, function () {
     var rawOccupancies, enrichedOccupancies, error_1;
     return __generator(this, function (_a) {
         switch (_a.label) {

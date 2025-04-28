@@ -2,6 +2,18 @@ const cron = require("node-cron");
 import { getData, getDataForAPs } from "./arubaService";
 import { apMappings } from "./apMappings";
 const { MongoClient } = require("mongodb");
+const express = require("express");
+const app = express();
+const PORT = process.env.PORT;
+
+app.get("/", (req, res) => {
+  res.send("Campus Occupancy Backend is running");
+});
+
+app.listen(PORT, () => {
+  console.log(`Server is listening on port ${PORT}`);
+});
+
 
 // Mock function to get device status
 function getDeviceStatus(classroom: string): boolean {
@@ -122,7 +134,7 @@ function handleDevicesOff(classroom: string, occupancy: number) {
 
 
 // Schedule to run every hour from 8AM to 10PM
-cron.schedule("0 8-22 * * *", async () => {
+cron.schedule("13 1-22 * * *", async () => {
   console.log(" Scheduled task running...");
   try {
     const rawOccupancies = await getData();
