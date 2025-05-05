@@ -1,41 +1,36 @@
-const cron = require("node-cron");
+import dotenv from "dotenv";
+import { MongoClient } from "mongodb";
 import { getData, getDataForAPs } from "./arubaService";
 import { apMappings } from "./apMappings";
-const { MongoClient } = require("mongodb");
-const express = require("express");
+const cron = require("node-cron");
+import express, { Request, Response } from "express";
+
+// Load environment variables
+dotenv.config();
+
 const app = express();
-const PORT = process.env.PORT;
+const port = 3000;
 
-app.get("/", (req, res) => {
-  res.send("Campus Occupancy Backend is running");
-});
+// Mongo config
+const mongoUrl = process.env.MONGO_URI!;
+const dbName = "occupancyDB";
+const collectionName = "occupancy_logs";
 
-app.listen(PORT, () => {
-  console.log(`Server is listening on port ${PORT}`);
-});
-
-
-// Mock function to get device status
+// Mock function for simulation
 function getDeviceStatus(classroom: string): boolean {
   const simulatedOnRooms = ["RoomA", "RoomB"];
   return simulatedOnRooms.includes(classroom);
 }
 
-// Control functions
 function turnOnDevices(classroom: string) {
-  console.log(` [ACTION] Turning ON devices in ${classroom}`);
+  console.log(`[ACTION] Turning ON devices in ${classroom}`);
 }
 
 function turnOffDevices(classroom: string) {
-  console.log(` [ACTION] Turning OFF devices in ${classroom}`);
+  console.log(`[ACTION] Turning OFF devices in ${classroom}`);
 }
 
-
-const mongoUrl = process.env.MONGO_URI;
-const dbName = "occupancyDB";
-const collectionName = "occupancy_logs";
-
-// Save data to MongoDB
+// Save enriched data
 async function saveDataToMongo(data: any) {
   const client = new MongoClient(mongoUrl);
   await client.connect();
@@ -44,9 +39,8 @@ async function saveDataToMongo(data: any) {
   
   const now = new Date();
   await collection.insertOne({ timestamp: now, data });
-  
   await client.close();
-  
+
   const timestamp = new Intl.DateTimeFormat("en-GB", {
     timeZone: "Africa/Casablanca",
     year: "numeric",
@@ -61,16 +55,15 @@ async function saveDataToMongo(data: any) {
   console.log(`---------- Data saved to MongoDB at ${timestamp}`);
 }
 
+// Logic to handle occupancy
 async function handleOccupancyLogic(occupancies: any) {
   const enriched: Record<string, { occupancy: number; status: string; count: number; frequency: string }> = {};
 
   for (const classroom of Object.keys(occupancies)) {
     const { occupancy } = occupancies[classroom];
     const devicesOn = getDeviceStatus(classroom);
-
     let count = 0;
 
-    // Handle devices when they are on
     if (devicesOn) {
       const result = await handleDevicesOn(classroom, occupancy);
       enriched[classroom] = { occupancy, ...result };
@@ -83,7 +76,6 @@ async function handleOccupancyLogic(occupancies: any) {
   return enriched;
 }
 
-// Handle devices when they are on
 async function handleDevicesOn(classroom: string, occupancy: number) {
   let count = 0;
   let status = "NA";
@@ -104,9 +96,6 @@ async function handleDevicesOn(classroom: string, occupancy: number) {
 
     if (secondOccupancy === 0) {
       turnOffDevices(classroom);
-      status = "Off";
-      count = 1;
-      frequency = "5 mins";
     } else {
       status = "On";
     }
@@ -115,37 +104,81 @@ async function handleDevicesOn(classroom: string, occupancy: number) {
   return { status, count, frequency };
 }
 
-// Handle devices when they are off
 function handleDevicesOff(classroom: string, occupancy: number) {
   let count = 0;
   let frequency = "1 hour";
 
-  // If occupancy is 0, set status to "Off"
   if (occupancy === 0) {
+    frequency = "5 mins";
+    count = 1;
     console.log(` ${classroom}: Devices OFF & Occupancy 0 → Check again in an hour.`);
     return { status: "Off", count, frequency };
   }
 
-  // If occupancy is not 0, turn on devices and set status to "On"
   turnOnDevices(classroom);
   console.log(` ${classroom}: Devices OFF & Occupancy ${occupancy} → Turned ON devices, will check again in an hour.`);
   return { status: "On", count, frequency };
 }
 
-
-// Schedule to run every hour from 8AM to 10PM
-cron.schedule("13 1-22 * * *", async () => {
-  console.log(" Scheduled task running...");
+// Schedule data collection every hour from 8 AM to 10 PM
+cron.schedule("47 8-22 * * *", async () => {
+  console.log("Scheduled task running...");
   try {
     const rawOccupancies = await getData();
-    const enrichedOccupancies = await handleOccupancyLogic(rawOccupancies);
-    
-    console.log("Enriched occupancies:", enrichedOccupancies);
-
-    await saveDataToMongo(enrichedOccupancies);
+    const enriched = await handleOccupancyLogic(rawOccupancies);
+    console.log("Enriched occupancies:", enriched);
+    await saveDataToMongo(enriched);
   } catch (error) {
-    console.error("-------Error during scheduled task:", error);
+    console.error("------- Error during scheduled task:", error);
   }
 });
 
-console.log("-------Scheduler initialized. Running every hour from 8AM to 10PM.");
+console.log("------- Scheduler initialized. Running every hour from 8AM to 10PM.");
+
+app.get("/api/occupancy", async (req: Request, res: Response) => {
+  try {
+    const mongo = new MongoClient(mongoUrl);
+    await mongo.connect();
+    const collection = mongo.db(dbName).collection(collectionName);
+    const latest = await collection.find().sort({ timestamp: -1 }).limit(1).toArray();
+
+    const occupancy = latest[0]?.data?.["NAB Classroom 001"]?.occupancy ?? 0;
+    await mongo.close();
+
+    res.json({ occupancy });
+  } catch (error) {
+    console.error("API error:", error);
+    res.status(500).json({ error: "Could not fetch occupancy" });
+  }
+});
+
+app.get("/api/enriched", (req: Request, res: Response): void => {
+  (async () => {
+    try {
+      const room = req.query.room as string;
+      if (!room) {
+        res.status(400).json({ error: "Missing room parameter" });
+        return;
+      }
+
+      const mongo = new MongoClient(mongoUrl);
+      await mongo.connect();
+      const collection = mongo.db(dbName).collection(collectionName);
+      const latest = await collection.find().sort({ timestamp: -1 }).limit(1).toArray();
+
+      const roomData = latest[0]?.data?.[room];
+      const status = roomData?.status ?? "NA";
+
+      await mongo.close();
+      res.json({ status });
+    } catch (error) {
+      console.error("Enriched API error:", error);
+      res.status(500).json({ error: "Could not fetch enriched status" });
+    }
+  })();
+});
+
+// Start Express server
+app.listen(port, () => {
+  console.log(`✅ Express server running at http://localhost:${port}`);
+});

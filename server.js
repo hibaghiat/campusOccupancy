@@ -1,15 +1,4 @@
 "use strict";
-var __assign = (this && this.__assign) || function () {
-    __assign = Object.assign || function(t) {
-        for (var s, i = 1, n = arguments.length; i < n; i++) {
-            s = arguments[i];
-            for (var p in s) if (Object.prototype.hasOwnProperty.call(s, p))
-                t[p] = s[p];
-        }
-        return t;
-    };
-    return __assign.apply(this, arguments);
-};
 var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, generator) {
     function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
     return new (P || (P = Promise))(function (resolve, reject) {
@@ -19,214 +8,174 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
         step((generator = generator.apply(thisArg, _arguments || [])).next());
     });
 };
-var __generator = (this && this.__generator) || function (thisArg, body) {
-    var _ = { label: 0, sent: function() { if (t[0] & 1) throw t[1]; return t[1]; }, trys: [], ops: [] }, f, y, t, g = Object.create((typeof Iterator === "function" ? Iterator : Object).prototype);
-    return g.next = verb(0), g["throw"] = verb(1), g["return"] = verb(2), typeof Symbol === "function" && (g[Symbol.iterator] = function() { return this; }), g;
-    function verb(n) { return function (v) { return step([n, v]); }; }
-    function step(op) {
-        if (f) throw new TypeError("Generator is already executing.");
-        while (g && (g = 0, op[0] && (_ = 0)), _) try {
-            if (f = 1, y && (t = op[0] & 2 ? y["return"] : op[0] ? y["throw"] || ((t = y["return"]) && t.call(y), 0) : y.next) && !(t = t.call(y, op[1])).done) return t;
-            if (y = 0, t) op = [op[0] & 2, t.value];
-            switch (op[0]) {
-                case 0: case 1: t = op; break;
-                case 4: _.label++; return { value: op[1], done: false };
-                case 5: _.label++; y = op[1]; op = [0]; continue;
-                case 7: op = _.ops.pop(); _.trys.pop(); continue;
-                default:
-                    if (!(t = _.trys, t = t.length > 0 && t[t.length - 1]) && (op[0] === 6 || op[0] === 2)) { _ = 0; continue; }
-                    if (op[0] === 3 && (!t || (op[1] > t[0] && op[1] < t[3]))) { _.label = op[1]; break; }
-                    if (op[0] === 6 && _.label < t[1]) { _.label = t[1]; t = op; break; }
-                    if (t && _.label < t[2]) { _.label = t[2]; _.ops.push(op); break; }
-                    if (t[2]) _.ops.pop();
-                    _.trys.pop(); continue;
-            }
-            op = body.call(thisArg, _);
-        } catch (e) { op = [6, e]; y = 0; } finally { f = t = 0; }
-        if (op[0] & 5) throw op[1]; return { value: op[0] ? op[1] : void 0, done: true };
-    }
+var __importDefault = (this && this.__importDefault) || function (mod) {
+    return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-var cron = require("node-cron");
-var arubaService_1 = require("./arubaService");
-var apMappings_1 = require("./apMappings");
-var MongoClient = require("mongodb").MongoClient;
-var express = require("express");
-var app = express();
-var PORT = process.env.PORT;
-app.get("/", function (req, res) {
-    res.send("Campus Occupancy Backend is running");
-});
-app.listen(PORT, function () {
-    console.log("Server is listening on port ".concat(PORT));
-});
-// Mock function to get device status
+const dotenv_1 = __importDefault(require("dotenv"));
+const mongodb_1 = require("mongodb");
+const arubaService_1 = require("./arubaService");
+const apMappings_1 = require("./apMappings");
+const cron = require("node-cron");
+const express_1 = __importDefault(require("express"));
+// Load environment variables
+dotenv_1.default.config();
+const app = (0, express_1.default)();
+const port = 3000;
+// Mongo config
+const mongoUrl = process.env.MONGO_URI;
+const dbName = "occupancyDB";
+const collectionName = "occupancy_logs";
+// Mock function for simulation
 function getDeviceStatus(classroom) {
-    var simulatedOnRooms = ["RoomA", "RoomB"];
+    const simulatedOnRooms = ["RoomA", "RoomB"];
     return simulatedOnRooms.includes(classroom);
 }
-// Control functions
 function turnOnDevices(classroom) {
-    console.log(" [ACTION] Turning ON devices in ".concat(classroom));
+    console.log(`[ACTION] Turning ON devices in ${classroom}`);
 }
 function turnOffDevices(classroom) {
-    console.log(" [ACTION] Turning OFF devices in ".concat(classroom));
+    console.log(`[ACTION] Turning OFF devices in ${classroom}`);
 }
-var mongoUrl = process.env.MONGO_URI;
-var dbName = "occupancyDB";
-var collectionName = "occupancy_logs";
-// Save data to MongoDB
+// Save enriched data
 function saveDataToMongo(data) {
-    return __awaiter(this, void 0, void 0, function () {
-        var client, db, collection, now, timestamp;
-        return __generator(this, function (_a) {
-            switch (_a.label) {
-                case 0:
-                    client = new MongoClient(mongoUrl);
-                    return [4 /*yield*/, client.connect()];
-                case 1:
-                    _a.sent();
-                    db = client.db(dbName);
-                    collection = db.collection(collectionName);
-                    now = new Date();
-                    return [4 /*yield*/, collection.insertOne({ timestamp: now, data: data })];
-                case 2:
-                    _a.sent();
-                    return [4 /*yield*/, client.close()];
-                case 3:
-                    _a.sent();
-                    timestamp = new Intl.DateTimeFormat("en-GB", {
-                        timeZone: "Africa/Casablanca",
-                        year: "numeric",
-                        month: "2-digit",
-                        day: "2-digit",
-                        hour: "2-digit",
-                        minute: "2-digit",
-                        second: "2-digit",
-                        hour12: false,
-                    }).format(now).replace(/\D/g, "-");
-                    console.log("---------- Data saved to MongoDB at ".concat(timestamp));
-                    return [2 /*return*/];
-            }
-        });
+    return __awaiter(this, void 0, void 0, function* () {
+        const client = new mongodb_1.MongoClient(mongoUrl);
+        yield client.connect();
+        const db = client.db(dbName);
+        const collection = db.collection(collectionName);
+        const now = new Date();
+        yield collection.insertOne({ timestamp: now, data });
+        yield client.close();
+        const timestamp = new Intl.DateTimeFormat("en-GB", {
+            timeZone: "Africa/Casablanca",
+            year: "numeric",
+            month: "2-digit",
+            day: "2-digit",
+            hour: "2-digit",
+            minute: "2-digit",
+            second: "2-digit",
+            hour12: false,
+        }).format(now).replace(/\D/g, "-");
+        console.log(`---------- Data saved to MongoDB at ${timestamp}`);
     });
 }
+// Logic to handle occupancy
 function handleOccupancyLogic(occupancies) {
-    return __awaiter(this, void 0, void 0, function () {
-        var enriched, _i, _a, classroom, occupancy, devicesOn, count, result, result;
-        return __generator(this, function (_b) {
-            switch (_b.label) {
-                case 0:
-                    enriched = {};
-                    _i = 0, _a = Object.keys(occupancies);
-                    _b.label = 1;
-                case 1:
-                    if (!(_i < _a.length)) return [3 /*break*/, 5];
-                    classroom = _a[_i];
-                    occupancy = occupancies[classroom].occupancy;
-                    devicesOn = getDeviceStatus(classroom);
-                    count = 0;
-                    if (!devicesOn) return [3 /*break*/, 3];
-                    return [4 /*yield*/, handleDevicesOn(classroom, occupancy)];
-                case 2:
-                    result = _b.sent();
-                    enriched[classroom] = __assign({ occupancy: occupancy }, result);
-                    return [3 /*break*/, 4];
-                case 3:
-                    result = handleDevicesOff(classroom, occupancy);
-                    enriched[classroom] = __assign({ occupancy: occupancy }, result);
-                    _b.label = 4;
-                case 4:
-                    _i++;
-                    return [3 /*break*/, 1];
-                case 5: return [2 /*return*/, enriched];
+    return __awaiter(this, void 0, void 0, function* () {
+        const enriched = {};
+        for (const classroom of Object.keys(occupancies)) {
+            const { occupancy } = occupancies[classroom];
+            const devicesOn = getDeviceStatus(classroom);
+            let count = 0;
+            if (devicesOn) {
+                const result = yield handleDevicesOn(classroom, occupancy);
+                enriched[classroom] = Object.assign({ occupancy }, result);
             }
-        });
-    });
-}
-// Handle devices when they are on
-function handleDevicesOn(classroom, occupancy) {
-    return __awaiter(this, void 0, void 0, function () {
-        var count, status, frequency, apName, rechecked, secondOccupancy;
-        var _a;
-        return __generator(this, function (_b) {
-            switch (_b.label) {
-                case 0:
-                    count = 0;
-                    status = "NA";
-                    frequency = "1 hour";
-                    if (!(occupancy !== 0)) return [3 /*break*/, 1];
-                    status = "On";
-                    console.log(" ".concat(classroom, ": Devices ON & Occupancy ").concat(occupancy, " \u2192 Check again in an hour."));
-                    return [3 /*break*/, 4];
-                case 1:
-                    console.log("------- ".concat(classroom, ": Devices ON & Occupancy 0 \u2192 Checking again in 5 min..."));
-                    return [4 /*yield*/, new Promise(function (resolve) { return setTimeout(resolve, 5 * 60 * 1000); })];
-                case 2:
-                    _b.sent();
-                    apName = Object.keys(apMappings_1.apMappings).find(function (ap) { return apMappings_1.apMappings[ap] === classroom; });
-                    if (!apName)
-                        return [2 /*return*/, { status: status, count: count, frequency: frequency }];
-                    return [4 /*yield*/, (0, arubaService_1.getDataForAPs)([apName])];
-                case 3:
-                    rechecked = _b.sent();
-                    secondOccupancy = ((_a = rechecked[classroom]) === null || _a === void 0 ? void 0 : _a.occupancy) || 0;
-                    if (secondOccupancy === 0) {
-                        turnOffDevices(classroom);
-                        status = "Off";
-                        count = 1;
-                        frequency = "5 mins";
-                    }
-                    else {
-                        status = "On";
-                    }
-                    _b.label = 4;
-                case 4: return [2 /*return*/, { status: status, count: count, frequency: frequency }];
+            else {
+                const result = handleDevicesOff(classroom, occupancy);
+                enriched[classroom] = Object.assign({ occupancy }, result);
             }
-        });
-    });
-}
-// Handle devices when they are off
-function handleDevicesOff(classroom, occupancy) {
-    var count = 0;
-    var frequency = "1 hour";
-    // If occupancy is 0, set status to "Off"
-    if (occupancy === 0) {
-        console.log(" ".concat(classroom, ": Devices OFF & Occupancy 0 \u2192 Check again in an hour."));
-        return { status: "Off", count: count, frequency: frequency };
-    }
-    // If occupancy is not 0, turn on devices and set status to "On"
-    turnOnDevices(classroom);
-    console.log(" ".concat(classroom, ": Devices OFF & Occupancy ").concat(occupancy, " \u2192 Turned ON devices, will check again in an hour."));
-    return { status: "On", count: count, frequency: frequency };
-}
-// Schedule to run every hour from 8AM to 10PM
-cron.schedule("13 1-22 * * *", function () { return __awaiter(void 0, void 0, void 0, function () {
-    var rawOccupancies, enrichedOccupancies, error_1;
-    return __generator(this, function (_a) {
-        switch (_a.label) {
-            case 0:
-                console.log(" Scheduled task running...");
-                _a.label = 1;
-            case 1:
-                _a.trys.push([1, 5, , 6]);
-                return [4 /*yield*/, (0, arubaService_1.getData)()];
-            case 2:
-                rawOccupancies = _a.sent();
-                return [4 /*yield*/, handleOccupancyLogic(rawOccupancies)];
-            case 3:
-                enrichedOccupancies = _a.sent();
-                console.log("Enriched occupancies:", enrichedOccupancies);
-                return [4 /*yield*/, saveDataToMongo(enrichedOccupancies)];
-            case 4:
-                _a.sent();
-                return [3 /*break*/, 6];
-            case 5:
-                error_1 = _a.sent();
-                console.error("-------Error during scheduled task:", error_1);
-                return [3 /*break*/, 6];
-            case 6: return [2 /*return*/];
         }
+        return enriched;
     });
-}); });
-console.log("-------Scheduler initialized. Running every hour from 8AM to 10PM.");
+}
+function handleDevicesOn(classroom, occupancy) {
+    return __awaiter(this, void 0, void 0, function* () {
+        var _a;
+        let count = 0;
+        let status = "NA";
+        let frequency = "1 hour";
+        if (occupancy !== 0) {
+            status = "On";
+            console.log(` ${classroom}: Devices ON & Occupancy ${occupancy} → Check again in an hour.`);
+        }
+        else {
+            console.log(`------- ${classroom}: Devices ON & Occupancy 0 → Checking again in 5 min...`);
+            yield new Promise(resolve => setTimeout(resolve, 5 * 60 * 1000));
+            const apName = Object.keys(apMappings_1.apMappings).find(ap => apMappings_1.apMappings[ap] === classroom);
+            if (!apName)
+                return { status, count, frequency };
+            const rechecked = yield (0, arubaService_1.getDataForAPs)([apName]);
+            const secondOccupancy = ((_a = rechecked[classroom]) === null || _a === void 0 ? void 0 : _a.occupancy) || 0;
+            if (secondOccupancy === 0) {
+                turnOffDevices(classroom);
+            }
+            else {
+                status = "On";
+            }
+        }
+        return { status, count, frequency };
+    });
+}
+function handleDevicesOff(classroom, occupancy) {
+    let count = 0;
+    let frequency = "1 hour";
+    if (occupancy === 0) {
+        frequency = "5 mins";
+        count = 1;
+        console.log(` ${classroom}: Devices OFF & Occupancy 0 → Check again in an hour.`);
+        return { status: "Off", count, frequency };
+    }
+    turnOnDevices(classroom);
+    console.log(` ${classroom}: Devices OFF & Occupancy ${occupancy} → Turned ON devices, will check again in an hour.`);
+    return { status: "On", count, frequency };
+}
+// Schedule data collection every hour from 8 AM to 10 PM
+cron.schedule("47 8-22 * * *", () => __awaiter(void 0, void 0, void 0, function* () {
+    console.log("Scheduled task running...");
+    try {
+        const rawOccupancies = yield (0, arubaService_1.getData)();
+        const enriched = yield handleOccupancyLogic(rawOccupancies);
+        console.log("Enriched occupancies:", enriched);
+        yield saveDataToMongo(enriched);
+    }
+    catch (error) {
+        console.error("------- Error during scheduled task:", error);
+    }
+}));
+console.log("------- Scheduler initialized. Running every hour from 8AM to 10PM.");
+app.get("/api/occupancy", (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+    var _a, _b, _c, _d;
+    try {
+        const mongo = new mongodb_1.MongoClient(mongoUrl);
+        yield mongo.connect();
+        const collection = mongo.db(dbName).collection(collectionName);
+        const latest = yield collection.find().sort({ timestamp: -1 }).limit(1).toArray();
+        const occupancy = (_d = (_c = (_b = (_a = latest[0]) === null || _a === void 0 ? void 0 : _a.data) === null || _b === void 0 ? void 0 : _b["NAB Classroom 001"]) === null || _c === void 0 ? void 0 : _c.occupancy) !== null && _d !== void 0 ? _d : 0;
+        yield mongo.close();
+        res.json({ occupancy });
+    }
+    catch (error) {
+        console.error("API error:", error);
+        res.status(500).json({ error: "Could not fetch occupancy" });
+    }
+}));
+app.get("/api/enriched", (req, res) => {
+    (() => __awaiter(void 0, void 0, void 0, function* () {
+        var _a, _b, _c;
+        try {
+            const room = req.query.room;
+            if (!room) {
+                res.status(400).json({ error: "Missing room parameter" });
+                return;
+            }
+            const mongo = new mongodb_1.MongoClient(mongoUrl);
+            yield mongo.connect();
+            const collection = mongo.db(dbName).collection(collectionName);
+            const latest = yield collection.find().sort({ timestamp: -1 }).limit(1).toArray();
+            const roomData = (_b = (_a = latest[0]) === null || _a === void 0 ? void 0 : _a.data) === null || _b === void 0 ? void 0 : _b[room];
+            const status = (_c = roomData === null || roomData === void 0 ? void 0 : roomData.status) !== null && _c !== void 0 ? _c : "NA";
+            yield mongo.close();
+            res.json({ status });
+        }
+        catch (error) {
+            console.error("Enriched API error:", error);
+            res.status(500).json({ error: "Could not fetch enriched status" });
+        }
+    }))();
+});
+// Start Express server
+app.listen(port, () => {
+    console.log(`✅ Express server running at http://localhost:${port}`);
+});
