@@ -122,7 +122,7 @@ function handleDevicesOff(classroom, occupancy) {
     return { status: "On", count, frequency };
 }
 // Schedule data collection every hour from 8 AM to 10 PM
-cron.schedule("47 8-22 * * *", () => __awaiter(void 0, void 0, void 0, function* () {
+cron.schedule("55 2-22 * * *", () => __awaiter(void 0, void 0, void 0, function* () {
     console.log("Scheduled task running...");
     try {
         const rawOccupancies = yield (0, arubaService_1.getData)();

@@ -121,7 +121,7 @@ function handleDevicesOff(classroom: string, occupancy: number) {
 }
 
 // Schedule data collection every hour from 8 AM to 10 PM
-cron.schedule("47 8-22 * * *", async () => {
+cron.schedule("0 8-22 * * *", async () => {
   console.log("Scheduled task running...");
   try {
     const rawOccupancies = await getData();
